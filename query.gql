@@ -1,0 +1,17 @@
+fragment taskFields on Task {
+  id
+  name
+  description
+}
+
+query fetchTask {
+  getAllTasks {
+    ...taskFields
+  }
+}
+
+mutation addTask($name: String! $description: String) {
+  addTask(input: { name: $name, description: $description }) {
+    ...taskFields
+  }
+}

@@ -1,43 +1,32 @@
 import React, { useState } from 'react';
-import { gql } from "apollo-boost";
-import { Query, Mutation } from 'react-apollo';
+import {
+  useFetchTaskQuery,
+  useAddTaskMutation,
+  Task,
+  FetchTaskQueryHookResult
+} from "./generated/graphql";
 
-interface Task {
-  id: number;
-  name: string;
-  description?: string;
+const Tasks = () => {
+  const { data, loading, error, refetch } = useFetchTaskQuery();
+
+  if (loading) {
+    return <p>ロード中...</p>;
+  }
+
+  if (error) {
+    return <p>エラー</p>;
+  }
+
+  return <TaskList tasks={data!.getAllTasks as Task[]} refetch={refetch} />;
 }
 
-const QUERY = gql`
-  query getAllTasks {
-    getAllTasks {
-      id
-      name
-      description
-    }
-  }
-`;
-
-const MUTATION = gql`
-  mutation addTask($input: AddTaskInput!) {
-    addTask(input: $input) {
-      id
-      name
-      description
-    }
-  }
-`;
-
-const Tasks = () => 
-  <Query query={QUERY}>
-    {
-      ({ data, loading }: { data: any; loading: boolean; }) => {
-        return loading ? <p>ロード中...</p> : <TaskList tasks={data.getAllTasks} />
-      }
-    }
-  </Query>
-
-const TaskList = ({ tasks }: { tasks: Task[] }) => {
+const TaskList = ({
+  tasks,
+  refetch
+}: {
+  tasks: Task[];
+  refetch: FetchTaskQueryHookResult["refetch"];
+}) => {
   const [taskName, setTaskName] = useState("");
 
   function handleInputTaskName(
@@ -48,27 +37,33 @@ const TaskList = ({ tasks }: { tasks: Task[] }) => {
     setTaskName(e.target.value);
   }
 
-  function handleClickAddTaskButton(func: Function) {
-    func();
+  const [addTask, { loading, error }] = useAddTaskMutation({
+    variables: {
+      name: taskName
+    }
+  });
+
+  function handleClickAddTaskButton() {
+    addTask();
+
+    refetch();
 
     setTaskName("");
+  }
+
+  if (loading) {
+    return <p>ロード中...</p>;
+  }
+
+  if (error) {
+    return <p>エラー</p>;
   }
 
   return (
     <div>
       <form>
         <input type="text" onChange={handleInputTaskName} value={taskName} />
-        <Mutation
-          mutation={MUTATION}
-          variables={{ input: { name: taskName } }}
-          refetchQueries={[{ query: QUERY }]}
-        >
-          {(addTask: Function) => (
-            <button onClick={() => handleClickAddTaskButton(addTask)}>
-              タスクを追加
-            </button>
-          )}
-        </Mutation>
+        <button onClick={() => handleClickAddTaskButton()}>タスクを追加</button>
       </form>
       <ul>
         {tasks.map(task => (
